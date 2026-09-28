@@ -1,0 +1,10 @@
+.git
+.github
+notebooks/
+tests/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+run_tests.py
+frontend/node_modules/
