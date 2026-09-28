@@ -1,0 +1,31 @@
+{
+  "system": "AURA-BLEND",
+  "models": [
+    "HRES",
+    "GraphCast",
+    "Pangu"
+  ],
+  "target": "2m_temperature",
+  "resolution": "240x121",
+  "india_domain": [
+    6.0,
+    38.5,
+    68.0,
+    98.5
+  ],
+  "lead_hours": [
+    24,
+    48,
+    72,
+    120
+  ],
+  "seed": 42,
+  "device": "cpu",
+  "epochs": 20,
+  "batch_size": 16,
+  "best_validation_loss": 0.018239406154376185,
+  "evp_alpha": 0.75,
+  "measured_test_rmse_change_vs_arithmetic_mean_pct": 7.775427343184826,
+  "metric_units": "RMSE/MAE/Bias in degC columns; ACC/FSS/event metrics dimensionless",
+  "note": "Headline values are generated from a locked temporal test set; proposal target bands are not hard-coded."
+}
