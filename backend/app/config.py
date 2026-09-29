@@ -12,6 +12,9 @@ def _resolve_artifact_dir() -> Path:
         Path.cwd() / "ml_artifacts",
         Path(__file__).resolve().parent.parent.parent / "ml_artifacts",
         Path("/var/task/ml_artifacts"),
+        ROOT / "Hybrid-AI-NWP" / "ml_artifacts",
+        Path.cwd() / "Hybrid-AI-NWP" / "ml_artifacts",
+        Path("/var/task/Hybrid-AI-NWP/ml_artifacts"),
     ]
     for c in candidates:
         if c.exists() and (c / "locked_test_outputs.npz").exists():
