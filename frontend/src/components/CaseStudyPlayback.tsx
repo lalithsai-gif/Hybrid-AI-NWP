@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { CaseDetail, CaseItem } from "../types";
 import { MapViewer } from "./MapViewer";
+import {
+  IconHistory,
+  IconChevronLeft,
+  IconChevronRight,
+  IconShieldAlert,
+  IconCheck,
+} from "./Icons";
 
 interface CaseStudyPlaybackProps {
   cases: CaseItem[];
@@ -39,9 +46,9 @@ export const CaseStudyPlayback: React.FC<CaseStudyPlaybackProps> = ({
 
   if (!cases || cases.length === 0) {
     return (
-      <div className="sci-card">
-        <div className="sci-card-body">
-          <p style={{ color: "var(--text-muted)" }}>Loading case studies...</p>
+      <div className="neu-panel">
+        <div className="neu-panel-body" style={{ textAlign: "center", padding: 40 }}>
+          <p style={{ color: "var(--text-muted)", fontWeight: 600 }}>Loading historical case studies...</p>
         </div>
       </div>
     );
@@ -107,17 +114,31 @@ export const CaseStudyPlayback: React.FC<CaseStudyPlaybackProps> = ({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Case Navigator Bar */}
-      <div className="sci-card" style={{ borderTop: "3px solid var(--primary-gold)" }}>
-        <div className="sci-card-body" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-              Case Playback:
-            </span>
+      {/* 1. Case Navigator Bar */}
+      <div className="neu-panel" style={{ borderTop: "3px solid var(--brand-orange)" }}>
+        <div
+          className="neu-panel-body"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 20px",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--brand-orange)" }}>
+              <IconHistory size={18} color="var(--brand-orange)" />
+              <span style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                Case Playback:
+              </span>
+            </div>
             <select
-              className="control-select"
+              className="control-select-input"
               value={currentIndex}
               onChange={(e) => setCurrentIndex(Number(e.target.value))}
+              aria-label="Select case study"
             >
               {cases.map((c, idx) => (
                 <option key={c.id} value={idx}>
@@ -128,36 +149,68 @@ export const CaseStudyPlayback: React.FC<CaseStudyPlaybackProps> = ({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button className="control-btn" onClick={handlePrev}>
-              ← Previous Case
+            <button
+              type="button"
+              className="sub-model-pill"
+              onClick={handlePrev}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              <IconChevronLeft size={14} />
+              <span>Previous</span>
             </button>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", minWidth: 60, textAlign: "center" }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                fontFamily: "var(--font-mono)",
+                color: "var(--text-secondary)",
+                minWidth: 60,
+                textAlign: "center",
+              }}
+            >
               {currentIndex + 1} / {cases.length}
             </span>
-            <button className="control-btn" onClick={handleNext}>
-              Next Case →
+            <button
+              type="button"
+              className="sub-model-pill"
+              onClick={handleNext}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              <span>Next</span>
+              <IconChevronRight size={14} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Case Overview & Forecaster Narrative */}
+      {/* 2. Case Synoptic Narrative & Significance */}
       {currentCase && (
-        <div className="sci-card" style={{ background: "#fcfbf7", borderLeft: "4px solid var(--primary-gold)" }}>
-          <div className="sci-card-body">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+        <div className="neu-panel" style={{ borderLeft: "5px solid var(--brand-orange)" }}>
+          <div className="neu-panel-body" style={{ padding: "16px 20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
                 {currentCase.title}
               </h3>
-              <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--primary-gold-dark)" }}>
-                Init: {currentCase.init} • Lead: +{currentCase.lead_hours}h
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 800,
+                  color: "var(--brand-orange)",
+                  backgroundColor: "var(--brand-orange-soft)",
+                  padding: "3px 8px",
+                  borderRadius: "var(--radius-xs)",
+                  border: "1px solid var(--border-orange)",
+                }}
+              >
+                Init: {currentCase.init} • +{currentCase.lead_hours}h Lead
               </span>
             </div>
-            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 6 }}>
               <strong>Operational Significance:</strong> {currentCase.reason}
             </p>
             {caseData?.narrative && (
-              <p style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", lineHeight: 1.5 }}>
                 {caseData.narrative}
               </p>
             )}
@@ -165,25 +218,29 @@ export const CaseStudyPlayback: React.FC<CaseStudyPlaybackProps> = ({
         </div>
       )}
 
-      {/* Synchronized Step Sequence Bar */}
+      {/* 3. Synchronized Step Sequence Scrubber */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>
           Playback Stage:
         </span>
-        {stepsList.map((step) => (
-          <button
-            key={step.id}
-            className={`map-mode-btn ${activeStepId === step.id ? "active" : ""}`}
-            style={{ fontSize: 12, padding: "5px 10px" }}
-            onClick={() => setActiveStepId(step.id)}
-          >
-            {step.label}
-          </button>
-        ))}
+        {stepsList.map((step) => {
+          const isActive = activeStepId === step.id;
+          return (
+            <button
+              key={step.id}
+              type="button"
+              className={`sub-model-pill ${isActive ? "active" : ""}`}
+              style={{ fontSize: 11, padding: "5px 11px" }}
+              onClick={() => setActiveStepId(step.id)}
+            >
+              {step.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main Grid: Interactive Map + Metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20 }}>
+      {/* 4. Split Grid: Map + Incident Verification Scores */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: 20 }}>
         {/* Map */}
         <MapViewer
           grid={displayGrid}
@@ -192,69 +249,74 @@ export const CaseStudyPlayback: React.FC<CaseStudyPlaybackProps> = ({
           title={displayTitle}
           selectedCell={selectedCell}
           onSelectCell={onSelectCell}
-          height={620}
+          height={640}
           showModeBar={false}
         />
 
-        {/* Right Metrics Panel */}
+        {/* Right Incident Scores Panel */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {caseData?.metrics && (
-            <div className="sci-card">
-              <div className="sci-card-header">
-                <div className="sci-card-title">
-                  <span>Case Verification Scores</span>
+            <div className="neu-panel" style={{ borderTop: "3px solid var(--brand-orange)" }}>
+              <div className="neu-panel-header">
+                <div className="neu-panel-title">
+                  <span>Incident Verification Scores</span>
                 </div>
               </div>
-              <div className="sci-card-body" style={{ padding: 0 }}>
-                <table className="sci-table">
-                  <thead>
-                    <tr>
-                      <th>Model</th>
-                      <th>RMSE (°C)</th>
-                      <th>MAE (°C)</th>
-                      <th>ACC</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(caseData.metrics).map(([name, m]) => {
-                      const isAura = name.includes("AURA");
-                      return (
-                        <tr key={name} className={isAura ? "highlight-row" : ""}>
-                          <td style={{ fontWeight: isAura ? 700 : 500 }}>{name}</td>
-                          <td style={{ fontFamily: "var(--font-mono)" }}>{m.RMSE_C.toFixed(3)}</td>
-                          <td style={{ fontFamily: "var(--font-mono)" }}>{m.MAE_C.toFixed(3)}</td>
-                          <td style={{ fontFamily: "var(--font-mono)" }}>{m.ACC.toFixed(4)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="neu-panel-body" style={{ padding: 0 }}>
+                <div className="neu-table-wrapper">
+                  <table className="neu-table">
+                    <thead>
+                      <tr>
+                        <th>Model</th>
+                        <th>RMSE (°C)</th>
+                        <th>MAE (°C)</th>
+                        <th>ACC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(caseData.metrics).map(([name, m]) => {
+                        const isAura = name.includes("AURA");
+                        return (
+                          <tr key={name} className={isAura ? "highlight-consensus-row" : ""}>
+                            <td style={{ fontWeight: isAura ? 800 : 600, color: isAura ? "var(--brand-orange)" : "inherit" }}>
+                              {name}
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{m.RMSE_C.toFixed(3)}</td>
+                            <td style={{ fontFamily: "var(--font-mono)" }}>{m.MAE_C.toFixed(3)}</td>
+                            <td style={{ fontFamily: "var(--font-mono)" }}>{m.ACC.toFixed(4)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
 
           {caseData?.evp && (
-            <div className="sci-card">
-              <div className="sci-card-header">
-                <div className="sci-card-title">
-                  <span>EVP & Guardrails In This Case</span>
+            <div className="neu-panel">
+              <div className="neu-panel-header">
+                <div className="neu-panel-title">
+                  <IconShieldAlert size={15} color="var(--brand-orange)" />
+                  <span>EVP & Physical Guardrail Status</span>
                 </div>
               </div>
-              <div className="sci-card-body">
-                <div className="key-value-row">
-                  <span className="key">EVP Alpha</span>
-                  <span className="value">{caseData.evp.evp_alpha}</span>
+              <div className="neu-panel-body">
+                <div className="spec-kv-row">
+                  <span className="spec-kv-key">EVP Alpha Parameter</span>
+                  <span className="spec-kv-val">{caseData.evp.evp_alpha}</span>
                 </div>
-                <div className="key-value-row">
-                  <span className="key">EVP Altered Field</span>
-                  <span className="value">
-                    {caseData.evp.evp_or_guardrail_changed_field ? "Yes" : "No"}
+                <div className="spec-kv-row">
+                  <span className="spec-kv-key">Upper Tail Modulated</span>
+                  <span className="spec-kv-val" style={{ color: caseData.evp.evp_or_guardrail_changed_field ? "var(--brand-orange)" : "inherit" }}>
+                    {caseData.evp.evp_or_guardrail_changed_field ? "Yes (Tail Preserved)" : "No (Within Bounds)"}
                   </span>
                 </div>
-                <div className="key-value-row">
-                  <span className="key">Kelvin Guardrail Clip</span>
-                  <span className="value">
-                    {caseData.evp.guardrail_clip_detected ? "Clipped" : "Nominal"}
+                <div className="spec-kv-row">
+                  <span className="spec-kv-key">Kelvin Guardrail Clip</span>
+                  <span className="spec-kv-val">
+                    {caseData.evp.guardrail_clip_detected ? "Clipped" : "Physical Nominal"}
                   </span>
                 </div>
               </div>
@@ -265,3 +327,5 @@ export const CaseStudyPlayback: React.FC<CaseStudyPlaybackProps> = ({
     </div>
   );
 };
+
+export default CaseStudyPlayback;

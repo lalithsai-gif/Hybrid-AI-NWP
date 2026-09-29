@@ -1,5 +1,11 @@
 import React from "react";
 import { EvpStatus, GridPayload } from "../types";
+import {
+  IconShieldAlert,
+  IconActivity,
+  IconInfo,
+  IconCheck,
+} from "./Icons";
 
 interface ExtremeEventPanelProps {
   evp: EvpStatus | null;
@@ -18,97 +24,130 @@ export const ExtremeEventPanel: React.FC<ExtremeEventPanelProps> = ({
     return null;
   }
 
-  // Determine physical extreme status supported by 2m temperature
-  // High heat threshold: > 40°C, Severe: > 44°C
   const cellVal = selectedCell?.val ?? grid.max;
   const isHeatwave = cellVal >= 40.0;
   const isSevereHeatwave = cellVal >= 44.0;
   const isColdwave = cellVal <= 5.0;
 
-  // Inter-model spread provides meteorological agreement confidence
-  let confidenceLabel = "Moderate Confidence";
-  let confidenceColor = "var(--primary-gold-dark)";
+  // Inter-model spread confidence
+  let confidenceLabel = "Moderate Consensus Spread";
+  let confidenceColor = "var(--brand-orange)";
   if (interModelSpread !== undefined && interModelSpread !== null) {
     if (interModelSpread < 1.0) {
       confidenceLabel = "High Agreement (Spread < 1.0°C)";
       confidenceColor = "var(--status-green)";
     } else if (interModelSpread > 2.5) {
-      confidenceLabel = "Low Agreement / High Divergence";
+      confidenceLabel = "High Model Divergence (Spread > 2.5°C)";
       confidenceColor = "var(--status-red)";
     }
   }
 
   return (
-    <div className="sci-card">
-      <div className="sci-card-header">
-        <div className="sci-card-title">
-          <span>Extreme Weather Guidance</span>
+    <div className="neu-panel" style={{ borderTop: "3px solid var(--border-orange)" }}>
+      {/* Header */}
+      <div className="neu-panel-header">
+        <div className="neu-panel-title">
+          <IconShieldAlert size={15} color="var(--brand-orange)" />
+          <span>Thermal Hazard Intelligence</span>
         </div>
         <span
           style={{
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "2px 6px",
-            borderRadius: 3,
-            backgroundColor: isSevereHeatwave ? "var(--status-red-bg)" : isHeatwave ? "var(--status-amber-bg)" : "#f3f4f6",
-            color: isSevereHeatwave ? "var(--status-red)" : isHeatwave ? "var(--status-amber)" : "var(--text-secondary)",
+            fontSize: 10,
+            fontWeight: 800,
+            padding: "3px 8px",
+            borderRadius: "var(--radius-xs)",
+            backgroundColor: isSevereHeatwave
+              ? "var(--status-red-bg)"
+              : isHeatwave
+              ? "var(--status-amber-bg)"
+              : isColdwave
+              ? "var(--meteo-blue-bg)"
+              : "var(--bg-surface-inset)",
+            color: isSevereHeatwave
+              ? "var(--status-red)"
+              : isHeatwave
+              ? "var(--status-amber)"
+              : isColdwave
+              ? "var(--meteo-blue)"
+              : "var(--text-secondary)",
+            border: `1px solid ${
+              isSevereHeatwave
+                ? "var(--status-red-border)"
+                : isHeatwave
+                ? "var(--status-amber-border)"
+                : isColdwave
+                ? "var(--meteo-blue-border)"
+                : "var(--border-subtle)"
+            }`,
+            textTransform: "uppercase",
+            letterSpacing: 0.4,
           }}
         >
-          {isSevereHeatwave ? "Severe Heat Detected" : isHeatwave ? "Heat Alert (>40°C)" : isColdwave ? "Cold Alert (<5°C)" : "Within Nominal Range"}
+          {isSevereHeatwave
+            ? "Severe Heat Alert"
+            : isHeatwave
+            ? "Heat Alert (>40°C)"
+            : isColdwave
+            ? "Cold Wave Alert (<5°C)"
+            : "Nominal Thermal Range"}
         </span>
       </div>
 
-      <div className="sci-card-body">
-        <div className="key-value-row">
-          <span className="key">Thermal Extreme Threshold</span>
-          <span className="value">
+      <div className="neu-panel-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="spec-kv-row">
+          <span className="spec-kv-key">Tail Extreme Threshold</span>
+          <span className="spec-kv-val">
             {evp.extreme_threshold_normalized.toFixed(3)} σ (Calibrated Tail)
           </span>
         </div>
 
-        <div className="key-value-row">
-          <span className="key">Model Consensus Confidence</span>
-          <span className="value" style={{ color: confidenceColor }}>
+        <div className="spec-kv-row">
+          <span className="spec-kv-key">Ensemble Agreement</span>
+          <span className="spec-kv-val" style={{ color: confidenceColor }}>
             {confidenceLabel}
           </span>
         </div>
 
-        <div className="key-value-row">
-          <span className="key">Extreme Value Preservation (EVP)</span>
-          <span className="value">
-            {evp.evp_or_guardrail_changed_field ? "Active (Restoring upper tail)" : "Inactive for this field"}
+        <div className="spec-kv-row">
+          <span className="spec-kv-key">Extreme Value Preservation (EVP)</span>
+          <span className="spec-kv-val">
+            {evp.evp_or_guardrail_changed_field ? "Active (Tail Restored)" : "Inactive for this field"}
           </span>
         </div>
 
-        <div className="key-value-row">
-          <span className="key">Physical Kelvin Guardrail</span>
-          <span className="value">
-            {evp.guardrail_clip_detected ? "Clipped to physical bounds" : "Enforced [180.0 K, 340.0 K]"}
+        <div className="spec-kv-row">
+          <span className="spec-kv-key">Physical Kelvin Guardrail</span>
+          <span className="spec-kv-val">
+            {evp.guardrail_clip_detected ? "Clipped to Physical Bounds" : "Enforced [180.0 K, 340.0 K]"}
           </span>
         </div>
 
-        {/* Scientific Honesty Notice */}
+        {/* Operational Scientific Integrity Notice */}
         <div
           style={{
-            marginTop: 12,
-            padding: "8px 10px",
-            backgroundColor: "#f9fafb",
-            border: "1px solid #e5e7eb",
-            borderRadius: 4,
+            marginTop: 4,
+            padding: "10px 12px",
+            backgroundColor: "var(--bg-surface-inset)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-sm)",
             fontSize: 11,
             color: "var(--text-secondary)",
-            lineHeight: 1.4,
+            lineHeight: 1.5,
           }}
         >
-          <strong style={{ color: "var(--text-primary)" }}>Meteorological Integrity Notice:</strong>
-          <br />
-          Precipitation, convective hazard, and cyclone track probabilities are{" "}
-          <span style={{ fontWeight: 600, color: "var(--status-amber)" }}>
-            not available for current benchmark variable (2m Temperature).
-          </span>{" "}
-          Only upper-tail thermal extremes regulated by the Extreme Value Preservation (EVP) module are supported.
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, color: "var(--text-primary)", fontWeight: 750 }}>
+            <IconInfo size={13} color="var(--brand-orange)" />
+            <span>Operational Integrity Notice</span>
+          </div>
+          Precipitation and convective cyclone hazard probabilities are{" "}
+          <strong style={{ color: "var(--brand-orange)" }}>
+            not active for the 2m temperature benchmark.
+          </strong>{" "}
+          Only upper-tail thermal extremes modulated via Extreme Value Preservation (EVP) are supported.
         </div>
       </div>
     </div>
   );
 };
+
+export default ExtremeEventPanel;

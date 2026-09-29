@@ -21,13 +21,13 @@ const API_BASE = "";
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("operations");
 
-  // 5 Primary Map Modes (Section 3 of Specification)
+  // 5 Primary Map Modes
   const [mapMode, setMapMode] = useState<MapMode>("FORECAST");
   const [subModelKey, setSubModelKey] = useState<string>("aura");
 
   // Date and Lead controls
   const [dates, setDates] = useState<Array<{ date: string; leads: number[] }>>([]);
-  const [selectedDate, setSelectedDate] = useState<string>("2020-01-01");
+  const [selectedDate, setSelectedDate] = useState<string>("2020-10-19");
   const [leads, setLeads] = useState<number[]>([24, 48, 72, 120]);
   const [selectedLead, setSelectedLead] = useState<number>(24);
 
@@ -36,7 +36,7 @@ export const App: React.FC = () => {
   const [missingGraphCast, setMissingGraphCast] = useState(false);
   const [missingPangu, setMissingPangu] = useState(false);
 
-  // Selected Location Grid Cell (Default: New Delhi region ~28.5N, 77.2E)
+  // Selected Location Grid Cell (Default: New Delhi region ~28.5N, 76.5E)
   const [selectedCell, setSelectedCell] = useState<{
     r: number;
     c: number;
@@ -50,6 +50,8 @@ export const App: React.FC = () => {
     lon: 76.5,
     val: 22.4,
   });
+
+  const [selectedCityName, setSelectedCityName] = useState<string>("New Delhi");
 
   // Data endpoints
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
@@ -177,9 +179,10 @@ export const App: React.FC = () => {
   if (mapMode === "DIFFERENCE" && forecast?.grid) {
     const minDiff = forecast.grid.min;
     const maxDiff = forecast.grid.max;
-    const cellVal = selectedCell && forecast.grid.values[selectedCell.r]
-      ? forecast.grid.values[selectedCell.r][selectedCell.c]
-      : null;
+    const cellVal =
+      selectedCell && forecast.grid.values[selectedCell.r]
+        ? forecast.grid.values[selectedCell.r][selectedCell.c]
+        : null;
     diffStats = {
       min: minDiff,
       max: maxDiff,
@@ -187,12 +190,47 @@ export const App: React.FC = () => {
     };
   }
 
+  // City quick selection handler
+  const handleSelectCity = (city: { name: string; lat: number; lon: number }) => {
+    setSelectedCityName(city.name);
+    if (!forecast?.grid?.latitudes || !forecast?.grid?.longitudes) return;
+    const grid = forecast.grid;
+
+    let bestR = 0;
+    let minLatDiff = Math.abs(grid.latitudes[0] - city.lat);
+    for (let r = 1; r < grid.latitudes.length; r++) {
+      const diff = Math.abs(grid.latitudes[r] - city.lat);
+      if (diff < minLatDiff) {
+        minLatDiff = diff;
+        bestR = r;
+      }
+    }
+
+    let bestC = 0;
+    let minLonDiff = Math.abs(grid.longitudes[0] - city.lon);
+    for (let c = 1; c < grid.longitudes.length; c++) {
+      const diff = Math.abs(grid.longitudes[c] - city.lon);
+      if (diff < minLonDiff) {
+        minLonDiff = diff;
+        bestC = c;
+      }
+    }
+
+    setSelectedCell({
+      r: bestR,
+      c: bestC,
+      lat: grid.latitudes[bestR],
+      lon: grid.longitudes[bestC],
+      val: grid.values[bestR]?.[bestC] ?? null,
+    });
+  };
+
   return (
     <div className="dashboard-root">
-      {/* Header */}
+      {/* Modern Command Header */}
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Global Synchronized Controls */}
+      {/* Unified Forecast Horizon & Conditioning Bar */}
       <ControlBar
         dates={dates}
         selectedDate={selectedDate}
@@ -206,10 +244,12 @@ export const App: React.FC = () => {
         setMissingGraphCast={setMissingGraphCast}
         missingPangu={missingPangu}
         setMissingPangu={setMissingPangu}
+        onSelectCity={handleSelectCity}
+        selectedCityName={selectedCityName}
       />
 
-      {/* Main Content Areas */}
-      <main className={`main-content ${activeTab !== "operations" ? "full-width" : ""}`}>
+      {/* Main Workspace Area */}
+      <main className={`main-workspace ${activeTab !== "operations" ? "full-width" : ""}`}>
         {activeTab === "operations" && (
           <>
             {/* CENTRAL PRIMARY INDIA MAP */}
@@ -221,28 +261,36 @@ export const App: React.FC = () => {
               setSubModelKey={setSubModelKey}
               title={`India Operational Forecast • ${forecast?.model || "AURA-BLEND"} (+${selectedLead}h)`}
               selectedCell={selectedCell}
-              onSelectCell={setSelectedCell}
+              onSelectCell={(cell) => {
+                setSelectedCell(cell);
+                setSelectedCityName("");
+              }}
               height={700}
               selectedCellWeights={cellWeights}
               selectedCellConsensusVal={consensusPointVal}
               diffStats={diffStats}
             />
 
-            {/* RIGHT SIDEBAR: SELECTED LOCATION & TELEMETRY */}
+            {/* RIGHT SIDEBAR: SELECTED LOCATION & THERMAL HAZARDS */}
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Selected Location / Grid Cell Panel (Section 4 of Request) */}
+              {/* Selected Location / Grid Point Dossier */}
               <SelectedLocationPanel
                 selectedCell={selectedCell}
                 candidateValues={candidatePointValues}
                 weights={cellWeights}
                 metricsRows={comparisonData?.locked_test_metrics || []}
                 evpStatus={forecast?.evp || null}
-                inputHealthStatus={forecast?.input_health?.status || (missingHres || missingGraphCast || missingPangu ? "DEGRADED INPUT" : "FULL INPUT")}
+                inputHealthStatus={
+                  forecast?.input_health?.status ||
+                  (missingHres || missingGraphCast || missingPangu
+                    ? "DEGRADED INPUT"
+                    : "FULL INPUT")
+                }
                 leadHours={selectedLead}
-                initTime={forecast?.init || "2020-01-01T00:00:00Z"}
+                initTime={forecast?.init || "2020-10-19T00:00:00Z"}
               />
 
-              {/* Extreme Event Guidance Panel */}
+              {/* Thermal Hazard Intelligence Panel */}
               <ExtremeEventPanel
                 evp={forecast?.evp || null}
                 grid={forecast?.grid || null}

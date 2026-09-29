@@ -1,5 +1,13 @@
 import React from "react";
 import { EvpStatus } from "../types";
+import {
+  IconTarget,
+  IconClock,
+  IconShieldAlert,
+  IconCheck,
+  IconActivity,
+  IconCompass,
+} from "./Icons";
 
 interface SelectedLocationPanelProps {
   selectedCell: { r: number; c: number; lat: number; lon: number; val: number | null } | null;
@@ -23,10 +31,10 @@ interface SelectedLocationPanelProps {
   initTime: string;
 }
 
-// Helper to identify nearest Indian region / meteorological subdivision
+// Identify meteorological subdivision
 function getSubdivisionName(lat: number, lon: number): string {
-  if (lat >= 32.0) return "Western Himalayas (J&K / Ladakh / Himachal)";
-  if (lat >= 28.0 && lon <= 78.5) return "Northern Plains (Punjab / Haryana / Delhi NCR / West UP)";
+  if (lat >= 32.0) return "Western Himalayas (J&K / Ladakh / HP)";
+  if (lat >= 28.0 && lon <= 78.5) return "Northern Plains (Punjab / Haryana / Delhi NCR)";
   if (lat >= 28.0 && lon > 78.5) return "East Uttar Pradesh & Foothills";
   if (lat >= 24.0 && lon < 74.0) return "West Rajasthan & Thar Desert";
   if (lat >= 24.0 && lon >= 74.0 && lon <= 82.0) return "Central India (Madhya Pradesh & Bundelkhand)";
@@ -56,207 +64,266 @@ export const SelectedLocationPanel: React.FC<SelectedLocationPanelProps> = ({
   const lon = selectedCell?.lon ?? 77.2;
   const regionName = getSubdivisionName(lat, lon);
 
-  // Exact model values
+  // Candidate model values
   const valAura = candidateValues["AURA-BLEND"] ?? selectedCell?.val ?? null;
   const valHres = candidateValues["HRES"] ?? null;
   const valGraphcast = candidateValues["GraphCast"] ?? null;
   const valPangu = candidateValues["Pangu"] ?? null;
-  const valMean = candidateValues["Arithmetic Mean"] ?? (
-    valHres !== null && valGraphcast !== null && valPangu !== null
+  const valMean =
+    candidateValues["Arithmetic Mean"] ??
+    (valHres !== null && valGraphcast !== null && valPangu !== null
       ? (valHres + valGraphcast + valPangu) / 3
-      : null
-  );
+      : null);
   const valTruth = candidateValues["truth"] ?? null;
 
   // Exact weights
   const wHres = weights["HRES"] ?? 0.333;
   const wGraphcast = weights["GraphCast"] ?? 0.333;
   const wPangu = weights["Pangu"] ?? 0.334;
+  const totalW = wHres + wGraphcast + wPangu || 1.0;
+  const pctHres = ((wHres / totalW) * 100).toFixed(1);
+  const pctGraphcast = ((wGraphcast / totalW) * 100).toFixed(1);
+  const pctPangu = ((wPangu / totalW) * 100).toFixed(1);
 
   // Find AURA-BLEND verified metrics row
-  const auraMetrics = metricsRows.find((r) => r.Model.includes("AURA-Blend + EVP")) ||
+  const auraMetrics =
+    metricsRows.find((r) => r.Model.includes("AURA-Blend + EVP")) ||
     metricsRows.find((r) => r.Model.includes("AURA-Blend (base)")) ||
     metricsRows[metricsRows.length - 1];
 
   const isDegraded = inputHealthStatus.includes("DEGRADED");
 
   return (
-    <div className="sci-card selected-location-panel" style={{ borderTop: "4px solid var(--primary-gold)" }}>
-      {/* 1. Header: Selected Location Coordinates */}
-      <div className="sci-card-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-          <div className="sci-card-title">
-            <span style={{ color: "var(--primary-gold-dark)" }}>📍</span>
-            <span>SELECTED LOCATION</span>
+    <div className="neu-panel dossier-card">
+      {/* 1. Dossier Header */}
+      <div className="neu-panel-header">
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div className="neu-panel-title">
+            <IconTarget size={15} color="var(--brand-orange)" />
+            <span>Grid Point Telemetry</span>
           </div>
-          <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "var(--font-mono)", background: "#fef3c7", color: "var(--primary-gold-dark)", padding: "2px 8px", borderRadius: 4, border: "1px solid #fcd34d" }}>
-            +{leadHours}h Lead
-          </span>
+          <span className="dossier-header-subtext">{regionName}</span>
         </div>
 
-        <div style={{ display: "flex", gap: 12, fontSize: 13, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-primary)" }}>
-          <span>LAT: {lat.toFixed(2)}°N</span>
-          <span>LON: {lon.toFixed(2)}°E</span>
-        </div>
-        <div style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>
-          {regionName}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              fontWeight: 700,
+              backgroundColor: "var(--bg-surface-inset)",
+              padding: "3px 8px",
+              borderRadius: "var(--radius-xs)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
+            {lat.toFixed(2)}°N, {lon.toFixed(2)}°E
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              fontFamily: "var(--font-mono)",
+              backgroundColor: "var(--brand-orange-soft)",
+              color: "var(--brand-orange)",
+              padding: "3px 7px",
+              borderRadius: "var(--radius-xs)",
+              border: "1px solid var(--border-orange)",
+            }}
+          >
+            +{leadHours}h
+          </span>
         </div>
       </div>
 
-      <div className="sci-card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* 2. AURA-BLEND FORECAST Comparison */}
+      <div className="neu-panel-body" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        {/* 2. Forecast Consensus & Candidate Values Matrix */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-            <span>AURA-BLEND FORECAST</span>
-            <span>2m Temp (°C)</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 8,
+              fontSize: 11,
+              fontWeight: 800,
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            <span>Model Multi-Comparison</span>
+            <span>2m Surface (°C)</span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div className="forecast-point-row">
-              <span className="model-name">HRES (ECMWF Physics)</span>
-              <span className="model-val">{valHres !== null ? `${valHres.toFixed(1)}°C` : "—"}</span>
-            </div>
-
-            <div className="forecast-point-row">
-              <span className="model-name">GraphCast (DeepMind GNN)</span>
-              <span className="model-val">{valGraphcast !== null ? `${valGraphcast.toFixed(1)}°C` : "—"}</span>
-            </div>
-
-            <div className="forecast-point-row">
-              <span className="model-name">Pangu (Huawei 3D-ViT)</span>
-              <span className="model-val">{valPangu !== null ? `${valPangu.toFixed(1)}°C` : "—"}</span>
-            </div>
-
-            <div className="forecast-point-row" style={{ borderTop: "1px dashed #e2e8f0", paddingTop: 4 }}>
-              <span className="model-name" style={{ color: "var(--text-secondary)" }}>Arithmetic Mean</span>
-              <span className="model-val" style={{ color: "var(--text-secondary)" }}>
-                {valMean !== null ? `${valMean.toFixed(1)}°C` : "—"}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {/* AURA-BLEND Primary Row */}
+            <div className="model-row-item highlight-consensus">
+              <span className="model-row-name" style={{ color: "var(--brand-orange)", fontWeight: 800 }}>
+                <span>★ AURA-BLEND</span>
+                <span style={{ fontSize: 10, padding: "1px 5px", background: "#ffffff", borderRadius: 3, border: "1px solid var(--border-orange)" }}>
+                  Consensus
+                </span>
               </span>
-            </div>
-
-            <div className="forecast-point-row highlight-aura">
-              <span className="model-name" style={{ fontWeight: 800, color: "var(--primary-gold-dark)" }}>
-                ★ AURA-BLEND (Consensus)
-              </span>
-              <span className="model-val" style={{ fontWeight: 800, fontSize: 15, color: "var(--primary-gold-dark)" }}>
+              <span className="model-row-val" style={{ fontSize: 16, color: "var(--brand-orange)", fontWeight: 800 }}>
                 {valAura !== null ? `${valAura.toFixed(1)}°C` : "—"}
               </span>
             </div>
 
+            {/* HRES */}
+            <div className="model-row-item">
+              <span className="model-row-name">
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--status-green)", display: "inline-block" }} />
+                <span>HRES (ECMWF Physics)</span>
+              </span>
+              <span className="model-row-val">{valHres !== null ? `${valHres.toFixed(1)}°C` : "—"}</span>
+            </div>
+
+            {/* GraphCast */}
+            <div className="model-row-item">
+              <span className="model-row-name">
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--meteo-blue)", display: "inline-block" }} />
+                <span>GraphCast (DeepMind GNN)</span>
+              </span>
+              <span className="model-row-val">{valGraphcast !== null ? `${valGraphcast.toFixed(1)}°C` : "—"}</span>
+            </div>
+
+            {/* Pangu */}
+            <div className="model-row-item">
+              <span className="model-row-name">
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-orange)", display: "inline-block" }} />
+                <span>Pangu-Weather (Huawei 3D-ViT)</span>
+              </span>
+              <span className="model-row-val">{valPangu !== null ? `${valPangu.toFixed(1)}°C` : "—"}</span>
+            </div>
+
+            {/* Arithmetic Mean */}
+            <div className="model-row-item" style={{ borderStyle: "dashed" }}>
+              <span className="model-row-name" style={{ color: "var(--text-muted)" }}>
+                <span>Arithmetic Mean (Naive)</span>
+              </span>
+              <span className="model-row-val" style={{ color: "var(--text-muted)" }}>
+                {valMean !== null ? `${valMean.toFixed(1)}°C` : "—"}
+              </span>
+            </div>
+
+            {/* ERA5 Ground Truth if available */}
             {valTruth !== null && (
-              <div className="forecast-point-row" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 8px", borderRadius: 3 }}>
-                <span className="model-name" style={{ color: "#166534", fontWeight: 600 }}>ERA5 Ground Truth</span>
-                <span className="model-val" style={{ color: "#166534", fontWeight: 700 }}>{valTruth.toFixed(1)}°C</span>
+              <div className="model-row-item" style={{ backgroundColor: "var(--status-green-bg)", borderColor: "var(--status-green-border)" }}>
+                <span className="model-row-name" style={{ color: "var(--status-green)" }}>
+                  <IconCheck size={12} color="var(--status-green)" />
+                  <span>ERA5 Ground Truth</span>
+                </span>
+                <span className="model-row-val" style={{ color: "var(--status-green)" }}>
+                  {valTruth.toFixed(1)}°C
+                </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* 3. MODEL CONTRIBUTION (Weights %) */}
+        {/* 3. Learned Spatial Trust (SDW-Net Multi-Segment Bar) */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-            <span>MODEL CONTRIBUTION</span>
-            <span>Trust Weight %</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 4,
+              fontSize: 11,
+              fontWeight: 800,
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            <span>SDW-Net Trust Allocation</span>
+            <span>Spatial Weights</span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {/* HRES */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                <span style={{ fontWeight: 600 }}>HRES</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#15803d" }}>
-                  {(wHres * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="weight-progress-track">
-                <div className="weight-progress-bar" style={{ width: `${Math.min(100, wHres * 100)}%`, backgroundColor: "#15803d" }} />
-              </div>
-            </div>
-
-            {/* GraphCast */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                <span style={{ fontWeight: 600 }}>GraphCast</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#0284c7" }}>
-                  {(wGraphcast * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="weight-progress-track">
-                <div className="weight-progress-bar" style={{ width: `${Math.min(100, wGraphcast * 100)}%`, backgroundColor: "#0284c7" }} />
-              </div>
-            </div>
-
-            {/* Pangu */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                <span style={{ fontWeight: 600 }}>Pangu-Weather</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--primary-gold-dark)" }}>
-                  {(wPangu * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="weight-progress-track">
-                <div className="weight-progress-bar" style={{ width: `${Math.min(100, wPangu * 100)}%`, backgroundColor: "var(--primary-gold)" }} />
-              </div>
-            </div>
+          {/* Proportional Strip */}
+          <div className="trust-proportional-bar" title="Learned Trust Distribution">
+            <div className="trust-segment" style={{ width: `${pctHres}%`, backgroundColor: "var(--status-green)" }} />
+            <div className="trust-segment" style={{ width: `${pctGraphcast}%`, backgroundColor: "var(--meteo-blue)" }} />
+            <div className="trust-segment" style={{ width: `${pctPangu}%`, backgroundColor: "var(--brand-orange)" }} />
           </div>
 
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, fontStyle: "italic" }}>
-            *SDW-Net spatial weights dynamically inferred for local elevation & weather regime.
+          {/* Chips */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginTop: 8 }}>
+            <div style={{ padding: "4px 6px", background: "var(--bg-surface-inset)", borderRadius: 4, textAlign: "center", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: 10, color: "var(--status-green)", fontWeight: 700 }}>HRES</div>
+              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-mono)" }}>{pctHres}%</div>
+            </div>
+            <div style={{ padding: "4px 6px", background: "var(--bg-surface-inset)", borderRadius: 4, textAlign: "center", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: 10, color: "var(--meteo-blue)", fontWeight: 700 }}>GraphCast</div>
+              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-mono)" }}>{pctGraphcast}%</div>
+            </div>
+            <div style={{ padding: "4px 6px", background: "var(--bg-surface-inset)", borderRadius: 4, textAlign: "center", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: 10, color: "var(--brand-orange)", fontWeight: 700 }}>Pangu</div>
+              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-mono)" }}>{pctPangu}%</div>
+            </div>
           </div>
         </div>
 
-        {/* 4. VERIFICATION METRICS (Real data from final_metrics.csv) */}
+        {/* 4. Verification Skill Matrix (Real Locked-Test Data) */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-            <span>VERIFICATION SKILL</span>
-            <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Locked Test Data</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 8,
+              fontSize: 11,
+              fontWeight: 800,
+              color: "var(--text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            <span>Verification Skill Scores</span>
+            <span style={{ fontSize: 10, color: "var(--brand-orange)", fontWeight: 700 }}>588 Samples</span>
           </div>
 
           {auraMetrics ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, textAlign: "center" }}>
-              <div className="metric-mini-badge">
-                <div className="lbl">RMSE</div>
-                <div className="val">{Number(auraMetrics.RMSE_C).toFixed(3)}°C</div>
+            <div className="metric-3x3-grid">
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">RMSE</div>
+                <div className="metric-quad-value" style={{ color: "var(--brand-orange)" }}>
+                  {Number(auraMetrics.RMSE_C).toFixed(3)}°C
+                </div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">MAE</div>
-                <div className="val">{Number(auraMetrics.MAE_C).toFixed(3)}°C</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">MAE</div>
+                <div className="metric-quad-value">{Number(auraMetrics.MAE_C).toFixed(3)}°C</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">Bias</div>
-                <div className="val">{Number(auraMetrics.Bias_C).toFixed(3)}°C</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">Bias</div>
+                <div className="metric-quad-value">{Number(auraMetrics.Bias_C).toFixed(3)}°C</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">ACC</div>
-                <div className="val">{Number(auraMetrics.ACC).toFixed(4)}</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">ACC</div>
+                <div className="metric-quad-value">{Number(auraMetrics.ACC).toFixed(4)}</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">CSI</div>
-                <div className="val">{Number(auraMetrics.CSI).toFixed(3)}</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">CSI</div>
+                <div className="metric-quad-value">{Number(auraMetrics.CSI).toFixed(3)}</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">ETS</div>
-                <div className="val">{Number(auraMetrics.ETS).toFixed(3)}</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">ETS</div>
+                <div className="metric-quad-value">{Number(auraMetrics.ETS).toFixed(3)}</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">POD</div>
-                <div className="val">{Number(auraMetrics.POD).toFixed(3)}</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">POD</div>
+                <div className="metric-quad-value">{Number(auraMetrics.POD).toFixed(3)}</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">FAR</div>
-                <div className="val">{Number(auraMetrics.FAR).toFixed(3)}</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">FAR</div>
+                <div className="metric-quad-value">{Number(auraMetrics.FAR).toFixed(3)}</div>
               </div>
-
-              <div className="metric-mini-badge">
-                <div className="lbl">FSS</div>
-                <div className="val">{Number(auraMetrics.FSS).toFixed(3)}</div>
+              <div className="metric-quad-card">
+                <div className="metric-quad-label">FSS</div>
+                <div className="metric-quad-value">{Number(auraMetrics.FSS).toFixed(3)}</div>
               </div>
             </div>
           ) : (
@@ -264,35 +331,37 @@ export const SelectedLocationPanel: React.FC<SelectedLocationPanelProps> = ({
           )}
         </div>
 
-        {/* 5. Forecaster Guidance Telemetry */}
-        <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: 11 }}>
-          <div className="key-value-row" style={{ padding: "3px 0" }}>
-            <span className="key">Input Health</span>
-            <span className="value" style={{ color: isDegraded ? "var(--status-amber)" : "var(--status-green)" }}>
+        {/* 5. Physical Guardrails & Forecaster Safety Spec */}
+        <div style={{ backgroundColor: "var(--bg-surface-inset)", padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-subtle)" }}>
+          <div className="spec-kv-row">
+            <span className="spec-kv-key">Input Feed Health</span>
+            <span className="spec-kv-val" style={{ color: isDegraded ? "var(--status-amber)" : "var(--status-green)" }}>
               {inputHealthStatus}
             </span>
           </div>
 
-          <div className="key-value-row" style={{ padding: "3px 0" }}>
-            <span className="key">EVP Status</span>
-            <span className="value">
+          <div className="spec-kv-row">
+            <span className="spec-kv-key">EVP Status</span>
+            <span className="spec-kv-val">
               {evpStatus?.evp_or_guardrail_changed_field ? "Active (Tail Restored)" : "Nominal"} (α = {evpStatus?.evp_alpha ?? 0.75})
             </span>
           </div>
 
-          <div className="key-value-row" style={{ padding: "3px 0" }}>
-            <span className="key">Kelvin Guardrail</span>
-            <span className="value">
-              {evpStatus?.guardrail_clip_detected ? "Clipped" : "Nominal [-93°C, +67°C]"}
+          <div className="spec-kv-row">
+            <span className="spec-kv-key">Kelvin Guardrail</span>
+            <span className="spec-kv-val">
+              {evpStatus?.guardrail_clip_detected ? "Clipped" : "Physical [180K, 340K]"}
             </span>
           </div>
 
-          <div className="key-value-row" style={{ padding: "3px 0" }}>
-            <span className="key">Initialization</span>
-            <span className="value">{initTime}</span>
+          <div className="spec-kv-row">
+            <span className="spec-kv-key">Init Cycle</span>
+            <span className="spec-kv-val">{initTime}</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default SelectedLocationPanel;

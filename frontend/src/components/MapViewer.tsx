@@ -2,9 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { GridPayload } from "../types";
+import {
+  IconLayers,
+  IconSliders,
+  IconTarget,
+} from "./Icons";
 
 export type MapMode = "FORECAST" | "CONTRIBUTION" | "DIFFERENCE" | "EXTREME_EVENT" | "VERIFICATION";
-
 export type BaseMapStyle = "roadmap" | "satellite" | "terrain" | "osm";
 
 interface MapViewerProps {
@@ -26,7 +30,7 @@ interface MapViewerProps {
 }
 
 // Major Indian meteorological stations / reference cities
-const INDIAN_CITIES = [
+export const INDIAN_CITIES = [
   { name: "New Delhi", lat: 28.6139, lon: 77.2090 },
   { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
   { name: "Kolkata", lat: 22.5726, lon: 88.3639 },
@@ -41,11 +45,11 @@ const INDIAN_CITIES = [
 
 const BASE_MAPS: Record<BaseMapStyle, { name: string; url: string; options: L.TileLayerOptions }> = {
   roadmap: {
-    name: "Google Map",
+    name: "Map",
     url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
     options: {
       maxZoom: 20,
-      attribution: '&copy; Google Maps',
+      attribution: "&copy; Google Maps",
       subdomains: ["mt0", "mt1", "mt2", "mt3"],
     },
   },
@@ -54,7 +58,7 @@ const BASE_MAPS: Record<BaseMapStyle, { name: string; url: string; options: L.Ti
     url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     options: {
       maxZoom: 20,
-      attribution: '&copy; Google Maps Satellite',
+      attribution: "&copy; Google Maps Satellite",
       subdomains: ["mt0", "mt1", "mt2", "mt3"],
     },
   },
@@ -63,7 +67,7 @@ const BASE_MAPS: Record<BaseMapStyle, { name: string; url: string; options: L.Ti
     url: "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
     options: {
       maxZoom: 20,
-      attribution: '&copy; Google Maps Terrain',
+      attribution: "&copy; Google Maps Terrain",
       subdomains: ["mt0", "mt1", "mt2", "mt3"],
     },
   },
@@ -72,44 +76,41 @@ const BASE_MAPS: Record<BaseMapStyle, { name: string; url: string; options: L.Ti
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     options: {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: "&copy; OpenStreetMap",
     },
   },
 };
 
-// Color mapping functions
+// Discrete color mapping functions (NO GRADIENTS)
 function getTemperatureColor(val: number): string {
-  // Domain 2m temp range in India approx 0C to 45C
   const min = 0;
   const max = 45;
   const t = Math.max(0, Math.min(1, (val - min) / (max - min)));
 
-  if (t < 0.15) return "#1e3a8a"; // deep blue
-  if (t < 0.3) return "#0284c7"; // cyan/blue
-  if (t < 0.45) return "#059669"; // emerald green
-  if (t < 0.6) return "#facc15"; // yellow
-  if (t < 0.75) return "#f97316"; // orange
-  if (t < 0.9) return "#ef4444"; // red
-  return "#7f1d1d"; // deep crimson
+  if (t < 0.15) return "#1e3a8a"; // deep blue (<7°C)
+  if (t < 0.3) return "#0284c7";  // cyan/blue (7-14°C)
+  if (t < 0.45) return "#059669"; // emerald green (14-20°C)
+  if (t < 0.6) return "#facc15";  // yellow (20-27°C)
+  if (t < 0.75) return "#f97316"; // orange (27-34°C)
+  if (t < 0.9) return "#ef4444";  // red (34-40°C)
+  return "#7f1d1d";               // deep crimson (>40°C)
 }
 
 function getDifferenceColor(val: number): string {
-  // Diverging range: -3.0C to +3.0C centered at 0
   const maxAbs = 3.0;
   const clamped = Math.max(-maxAbs, Math.min(maxAbs, val));
-  const t = clamped / maxAbs; // -1.0 to +1.0
+  const t = clamped / maxAbs;
 
   if (t < -0.6) return "#1d4ed8";
   if (t < -0.2) return "#60a5fa";
   if (t < -0.05) return "#bfdbfe";
-  if (t <= 0.05) return "#f8fafc"; // near zero: neutral light
+  if (t <= 0.05) return "#f8fafc";
   if (t <= 0.2) return "#fecaca";
   if (t <= 0.6) return "#f87171";
   return "#b91c1c";
 }
 
 function getWeightColor(val: number): string {
-  // Fraction 0.0 to 1.0 or Percentage 0 to 100
   const fraction = val > 1.0 ? val / 100.0 : val;
   const t = Math.max(0, Math.min(1, fraction));
   if (t < 0.15) return "#fefce8";
@@ -121,13 +122,12 @@ function getWeightColor(val: number): string {
 }
 
 function getVerificationErrorColor(val: number): string {
-  // Absolute Error in degC (0.0 to 3.0)
   const t = Math.max(0, Math.min(1, val / 3.0));
-  if (t < 0.2) return "#15803d"; // low error (green)
-  if (t < 0.4) return "#84cc16"; // modest error
-  if (t < 0.6) return "#eab308"; // moderate error
-  if (t < 0.8) return "#f97316"; // high error
-  return "#dc2626"; // severe error (red)
+  if (t < 0.2) return "#15803d";
+  if (t < 0.4) return "#84cc16";
+  if (t < 0.6) return "#eab308";
+  if (t < 0.8) return "#f97316";
+  return "#dc2626";
 }
 
 function getCellFillColor(val: number | null, mode: MapMode, units: string): string {
@@ -209,7 +209,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     leafletMapRef.current = map;
 
-    // Create custom panes for meteorological layers to always render on top of tiles
+    // Custom panes for meteorological layers
     const gridPane = map.createPane("meteorologicalGridPane");
     gridPane.style.zIndex = "450";
 
@@ -273,7 +273,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     const rows = grid.values.length;
     const cols = grid.values[0].length;
-    const isFractionOrPct = currentMode === "CONTRIBUTION" || grid.units.includes("contribution") || grid.units.includes("fraction");
+    const isFractionOrPct =
+      currentMode === "CONTRIBUTION" ||
+      grid.units.includes("contribution") ||
+      grid.units.includes("fraction");
     const isDiff = currentMode === "DIFFERENCE" || grid.units.includes("difference");
 
     const halfLat = rows > 1 ? Math.abs(grid.latitudes[1] - grid.latitudes[0]) / 2 : 0.8;
@@ -299,15 +302,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           pane: "meteorologicalGridPane",
           fillColor,
           fillOpacity: layerOpacity,
-          color: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.35)",
+          color: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
           weight: isSelected ? 3 : 0.6,
           interactive: true,
         });
 
-        // Hover tooltip for meteorologist
-        const valText = val !== null && Number.isFinite(val)
-          ? `${val.toFixed(2)}${isFractionOrPct ? "%" : isDiff ? "°C diff" : "°C"}`
-          : "NaN";
+        const valText =
+          val !== null && Number.isFinite(val)
+            ? `${val.toFixed(2)}${isFractionOrPct ? "%" : isDiff ? "°C diff" : "°C"}`
+            : "NaN";
 
         rect.bindTooltip(
           `<div><strong>${lat.toFixed(1)}°N, ${lon.toFixed(1)}°E</strong><br/><span>${valText}</span></div>`,
@@ -318,7 +321,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           }
         );
 
-        // Interaction handlers
         rect.on("mouseover", () => {
           rect.setStyle({
             color: "#ffffff",
@@ -330,7 +332,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
         rect.on("mouseout", () => {
           rect.setStyle({
-            color: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.35)",
+            color: isSelected ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
             weight: isSelected ? 3 : 0.6,
             fillOpacity: layerOpacity,
           });
@@ -346,7 +348,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
   }, [grid, currentMode, layerOpacity, selectedCell]);
 
-  // Major Indian Cities Markers (Clickable pin to select closest grid cell)
+  // Major Indian Cities Markers
   useEffect(() => {
     const group = citiesLayerGroupRef.current;
     if (!group || !grid) return;
@@ -373,7 +375,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       });
 
       marker.on("click", () => {
-        // Find nearest grid cell to this city
         if (!grid.latitudes || !grid.longitudes) return;
 
         let bestR = 0;
@@ -425,8 +426,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             <div class="target-center-dot"></div>
           </div>
         `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
       });
 
       const targetMarker = L.marker([selectedCell.lat, selectedCell.lon], {
@@ -453,12 +454,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         { key: "truth", label: "ERA5 Ground Truth" },
       ];
       return (
-        <div className="sub-mode-bar">
-          <span className="mode-sub-label">Model Field:</span>
+        <div className="map-sub-toolbar">
+          <span className="sub-toolbar-label">Model Field:</span>
           {models.map((m) => (
             <button
               key={m.key}
-              className={`map-mode-btn ${currentSubKey === m.key ? "active" : ""}`}
+              type="button"
+              className={`sub-model-pill ${currentSubKey === m.key ? "active" : ""}`}
               onClick={() => handleSetSubKey(m.key)}
             >
               {m.label}
@@ -470,19 +472,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     if (currentMode === "CONTRIBUTION") {
       const contribs = [
-        { key: "weight_pangu", label: "Pangu Contribution %" },
-        { key: "weight_graphcast", label: "GraphCast Contribution %" },
-        { key: "weight_hres", label: "HRES Contribution %" },
+        { key: "weight_pangu", label: "Pangu Trust %" },
+        { key: "weight_graphcast", label: "GraphCast Trust %" },
+        { key: "weight_hres", label: "HRES Trust %" },
       ];
       return (
-        <div className="sub-mode-bar">
-          <span className="mode-sub-label" style={{ color: "var(--primary-gold-dark)" }}>
-            "Why AURA-BLEND trusts each model":
+        <div className="map-sub-toolbar">
+          <span className="sub-toolbar-label" style={{ color: "var(--brand-orange)" }}>
+            SDW-Net Learned Spatial Weights:
           </span>
           {contribs.map((m) => (
             <button
               key={m.key}
-              className={`map-mode-btn ${currentSubKey === m.key ? "active" : ""}`}
+              type="button"
+              className={`sub-model-pill ${currentSubKey === m.key ? "active" : ""}`}
               onClick={() => handleSetSubKey(m.key)}
             >
               {m.label}
@@ -500,12 +503,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         { key: "diff_pangu", label: "AURA-BLEND − Pangu" },
       ];
       return (
-        <div className="sub-mode-bar">
-          <span className="mode-sub-label">Diverging Difference:</span>
+        <div className="map-sub-toolbar">
+          <span className="sub-toolbar-label">Diverging Difference:</span>
           {diffs.map((d) => (
             <button
               key={d.key}
-              className={`map-mode-btn ${currentSubKey === d.key ? "active" : ""}`}
+              type="button"
+              className={`sub-model-pill ${currentSubKey === d.key ? "active" : ""}`}
               onClick={() => handleSetSubKey(d.key)}
             >
               {d.label}
@@ -517,11 +521,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     if (currentMode === "EXTREME_EVENT") {
       return (
-        <div className="sub-mode-bar">
-          <span className="mode-sub-label" style={{ color: "var(--status-amber)" }}>
+        <div className="map-sub-toolbar">
+          <span className="sub-toolbar-label" style={{ color: "var(--status-amber)" }}>
             Extreme Weather Guidance Layer:
           </span>
-          <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
             EVP Upper-Tail Restored Temperature Field (α = 0.75, Threshold = 1.645σ)
           </span>
         </div>
@@ -534,12 +538,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         { key: "error_aura", label: "AURA-BLEND Bias Map (AURA − ERA5)" },
       ];
       return (
-        <div className="sub-mode-bar">
-          <span className="mode-sub-label">Spatial Verification:</span>
+        <div className="map-sub-toolbar">
+          <span className="sub-toolbar-label">Spatial Verification:</span>
           {verifs.map((v) => (
             <button
               key={v.key}
-              className={`map-mode-btn ${currentSubKey === v.key ? "active" : ""}`}
+              type="button"
+              className={`sub-model-pill ${currentSubKey === v.key ? "active" : ""}`}
               onClick={() => handleSetSubKey(v.key)}
             >
               {v.label}
@@ -554,31 +559,53 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   if (!grid || !grid.values || grid.values.length === 0) {
     return (
-      <div className="sci-card" style={{ height }}>
-        <div className="sci-card-body" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <p style={{ color: "var(--text-muted)" }}>Loading India meteorological grid...</p>
+      <div className="neu-panel map-canvas-card" style={{ height }}>
+        <div className="neu-panel-body" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "var(--text-muted)", fontWeight: 600 }}>Loading India meteorological grid...</p>
         </div>
       </div>
     );
   }
 
-  const isFractionOrPct = currentMode === "CONTRIBUTION" || grid.units.includes("contribution") || grid.units.includes("fraction");
+  const isFractionOrPct =
+    currentMode === "CONTRIBUTION" ||
+    grid.units.includes("contribution") ||
+    grid.units.includes("fraction");
   const isDiff = currentMode === "DIFFERENCE" || grid.units.includes("difference");
   const isVerif = currentMode === "VERIFICATION" || grid.units.includes("error");
 
+  // Discrete Swatches for Legend (NO GRADIENTS)
+  const getLegendSwatches = () => {
+    if (isFractionOrPct) {
+      return ["#fefce8", "#fef08a", "#fde047", "#eab308", "#ca8a04", "#78350f"];
+    }
+    if (isDiff) {
+      return ["#1d4ed8", "#60a5fa", "#bfdbfe", "#f8fafc", "#fecaca", "#f87171", "#b91c1c"];
+    }
+    if (isVerif) {
+      return ["#15803d", "#84cc16", "#eab308", "#f97316", "#dc2626"];
+    }
+    // Default temperature 2m
+    return ["#1e3a8a", "#0284c7", "#059669", "#facc15", "#f97316", "#ef4444", "#7f1d1d"];
+  };
+
   return (
-    <div className="sci-card map-container-wrapper" style={{ height }}>
+    <div className="neu-panel map-canvas-card" style={{ height }}>
       {/* 1. Primary Map-Mode Selector Header */}
       {showModeBar && (
-        <div className="primary-map-mode-header">
-          <div className="map-mode-tabs-row">
+        <div className="map-toolbar-top">
+          <div className="map-mode-segment" role="tablist" aria-label="Map Display Mode">
             {(["FORECAST", "CONTRIBUTION", "DIFFERENCE", "EXTREME_EVENT", "VERIFICATION"] as const).map((mode) => (
               <button
                 key={mode}
-                className={`primary-mode-tab-btn ${currentMode === mode ? "active" : ""}`}
+                type="button"
+                className={`map-mode-tab ${currentMode === mode ? "active" : ""}`}
                 onClick={() => {
                   if (setMapMode) setMapMode(mode);
-                  if (mode === "FORECAST" && !["aura", "hres", "graphcast", "pangu", "mean", "truth"].includes(currentSubKey)) {
+                  if (
+                    mode === "FORECAST" &&
+                    !["aura", "hres", "graphcast", "pangu", "mean", "truth"].includes(currentSubKey)
+                  ) {
                     handleSetSubKey("aura");
                   } else if (mode === "CONTRIBUTION" && !currentSubKey.startsWith("weight_")) {
                     handleSetSubKey("weight_pangu");
@@ -586,7 +613,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     handleSetSubKey("diff_mean");
                   } else if (mode === "EXTREME_EVENT") {
                     handleSetSubKey("extreme_guidance");
-                  } else if (mode === "VERIFICATION" && !["verification", "error_aura"].includes(currentSubKey)) {
+                  } else if (
+                    mode === "VERIFICATION" &&
+                    !["verification", "error_aura"].includes(currentSubKey)
+                  ) {
                     handleSetSubKey("verification");
                   }
                 }}
@@ -599,11 +629,31 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* Map Controls: Base Map Switcher, Opacity, Telemetry & Zoom */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             {/* Google Base Map Switcher */}
-            <div className="map-baselayer-bar">
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 2,
+                backgroundColor: "var(--bg-surface-inset)",
+                padding: 2,
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               {(Object.keys(BASE_MAPS) as BaseMapStyle[]).map((style) => (
                 <button
                   key={style}
-                  className={`map-baselayer-btn ${baseMapStyle === style ? "active" : ""}`}
+                  type="button"
+                  style={{
+                    background: baseMapStyle === style ? "#0f172a" : "transparent",
+                    color: baseMapStyle === style ? "#ffffff" : "var(--text-secondary)",
+                    border: "none",
+                    borderRadius: "var(--radius-xs)",
+                    padding: "3px 8px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
                   onClick={() => setBaseMapStyle(style)}
                   title={`Switch to ${BASE_MAPS[style].name}`}
                 >
@@ -613,8 +663,23 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </div>
 
             {/* Meteorological Layer Opacity Slider */}
-            <div className="map-opacity-control" title="Adjust Meteorological Grid Opacity">
-              <span>Grid: {Math.round(layerOpacity * 100)}%</span>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: "var(--bg-surface-inset)",
+                padding: "3px 8px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-subtle)",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--text-secondary)",
+              }}
+              title="Adjust Meteorological Grid Opacity"
+            >
+              <IconSliders size={12} color="var(--text-muted)" />
+              <span>{Math.round(layerOpacity * 100)}%</span>
               <input
                 type="range"
                 min="0.2"
@@ -622,15 +687,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 step="0.05"
                 value={layerOpacity}
                 onChange={(e) => setLayerOpacity(parseFloat(e.target.value))}
-                className="map-opacity-slider"
+                style={{ width: 55, accentColor: "var(--brand-orange)", cursor: "pointer" }}
               />
             </div>
 
             {/* Live Hover Telemetry */}
             {hoveredCell && (
-              <div className="hover-telemetry-badge">
-                <span>{hoveredCell.lat.toFixed(1)}°N, {hoveredCell.lon.toFixed(1)}°E</span>:
-                <strong>
+              <div className="map-hover-telemetry">
+                <span>
+                  {hoveredCell.lat.toFixed(1)}°N, {hoveredCell.lon.toFixed(1)}°E
+                </span>
+                :
+                <strong style={{ color: "var(--brand-orange)" }}>
                   {hoveredCell.val !== null
                     ? `${hoveredCell.val.toFixed(1)}${isFractionOrPct ? "%" : isDiff ? "°C diff" : "°C"}`
                     : "NaN"}
@@ -639,16 +707,43 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             )}
 
             {/* Zoom Controls */}
-            <div className="zoom-btn-group">
+            <div
+              style={{
+                display: "inline-flex",
+                gap: 2,
+                backgroundColor: "var(--bg-surface-inset)",
+                borderRadius: "var(--radius-sm)",
+                padding: 2,
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               <button
-                className="control-btn-icon"
+                type="button"
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-xs)",
+                  padding: "2px 8px",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
                 onClick={() => leafletMapRef.current?.zoomIn()}
                 title="Zoom In"
               >
                 +
               </button>
               <button
-                className="control-btn-icon"
+                type="button"
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-xs)",
+                  padding: "2px 8px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
                 onClick={() =>
                   leafletMapRef.current?.fitBounds([
                     [6.0, 68.0],
@@ -660,7 +755,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 1:1
               </button>
               <button
-                className="control-btn-icon"
+                type="button"
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-xs)",
+                  padding: "2px 8px",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
                 onClick={() => leafletMapRef.current?.zoomOut()}
                 title="Zoom Out"
               >
@@ -676,19 +780,43 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       {/* 3. DIFFERENCE MODE Stats Banner */}
       {currentMode === "DIFFERENCE" && diffStats && (
-        <div className="diff-stats-banner">
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-around",
+            padding: "8px 16px",
+            backgroundColor: "var(--status-green-bg)",
+            borderBottom: "1px solid var(--status-green-border)",
+            fontSize: 12,
+            gap: 12,
+          }}
+        >
           <div>
-            <span className="diff-stat-lbl">Domain Min Difference: </span>
-            <span className="diff-stat-val" style={{ color: "#1d4ed8" }}>{diffStats.min.toFixed(2)}°C</span>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Domain Min Diff: </span>
+            <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "#1d4ed8" }}>
+              {diffStats.min.toFixed(2)}°C
+            </span>
           </div>
           <div>
-            <span className="diff-stat-lbl">Domain Max Difference: </span>
-            <span className="diff-stat-val" style={{ color: "#b91c1c" }}>+{diffStats.max.toFixed(2)}°C</span>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Domain Max Diff: </span>
+            <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "#b91c1c" }}>
+              +{diffStats.max.toFixed(2)}°C
+            </span>
           </div>
           <div>
-            <span className="diff-stat-lbl">Selected Cell Difference: </span>
-            <span className="diff-stat-val" style={{ color: diffStats.selectedVal !== null && diffStats.selectedVal >= 0 ? "#b91c1c" : "#1d4ed8" }}>
-              {diffStats.selectedVal !== null ? `${diffStats.selectedVal > 0 ? "+" : ""}${diffStats.selectedVal.toFixed(2)}°C` : "Click cell"}
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Selected Cell Diff: </span>
+            <span
+              style={{
+                fontWeight: 700,
+                fontFamily: "var(--font-mono)",
+                color: diffStats.selectedVal !== null && diffStats.selectedVal >= 0 ? "#b91c1c" : "#1d4ed8",
+              }}
+            >
+              {diffStats.selectedVal !== null
+                ? `${diffStats.selectedVal > 0 ? "+" : ""}${diffStats.selectedVal.toFixed(2)}°C`
+                : "Click grid cell"}
             </span>
           </div>
         </div>
@@ -696,72 +824,71 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       {/* 4. CONTRIBUTION MODE Cell Weights Banner */}
       {currentMode === "CONTRIBUTION" && selectedCell && selectedCellWeights && (
-        <div className="diff-stats-banner" style={{ backgroundColor: "#fefce8", borderColor: "#fde047" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-around",
+            padding: "8px 16px",
+            backgroundColor: "var(--brand-orange-soft)",
+            borderBottom: "1px solid var(--border-orange)",
+            fontSize: 12,
+            gap: 12,
+          }}
+        >
           <div>
-            <span className="diff-stat-lbl">AURA-BLEND Value: </span>
-            <span className="diff-stat-val">
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>AURA-BLEND Consensus: </span>
+            <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--brand-orange)" }}>
               {selectedCellConsensusVal !== null && selectedCellConsensusVal !== undefined
                 ? `${selectedCellConsensusVal.toFixed(1)}°C`
                 : "—"}
             </span>
           </div>
           <div>
-            <span className="diff-stat-lbl">HRES Weight: </span>
-            <span className="diff-stat-val" style={{ color: "#15803d" }}>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>HRES Weight: </span>
+            <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--status-green)" }}>
               {((selectedCellWeights["HRES"] ?? 0) * 100).toFixed(1)}%
             </span>
           </div>
           <div>
-            <span className="diff-stat-lbl">GraphCast Weight: </span>
-            <span className="diff-stat-val" style={{ color: "#0284c7" }}>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>GraphCast Weight: </span>
+            <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--meteo-blue)" }}>
               {((selectedCellWeights["GraphCast"] ?? 0) * 100).toFixed(1)}%
             </span>
           </div>
           <div>
-            <span className="diff-stat-lbl">Pangu Weight: </span>
-            <span className="diff-stat-val" style={{ color: "var(--primary-gold-dark)" }}>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Pangu Weight: </span>
+            <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--brand-orange)" }}>
               {((selectedCellWeights["Pangu"] ?? 0) * 100).toFixed(1)}%
             </span>
           </div>
         </div>
       )}
 
-      {/* 5. EXTREME EVENT MODE Warning Banner */}
-      {currentMode === "EXTREME_EVENT" && (
-        <div className="diff-stats-banner" style={{ backgroundColor: "#fff7ed", borderColor: "#fdba74" }}>
-          <span style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}>
-            ⚠️ Operational Notice: Extreme-event probability not available for current benchmark variable. Upper-tail 2m temperature modulation shown via EVP.
-          </span>
-        </div>
-      )}
-
-      {/* 6. Central Real-World Interactive Leaflet Map Area */}
-      <div className="map-canvas-area" style={{ position: "relative" }}>
-        {/* Real World Leaflet Map Container */}
+      {/* 5. Central Real-World Interactive Leaflet Map Area */}
+      <div className="map-viewport-wrapper">
         <div ref={mapContainerRef} className="real-map-container" />
 
-        {/* 7. Floating Dynamic Color Legend */}
-        <div className="floating-map-legend" style={{ zIndex: 1000 }}>
-          <div style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>
-            {isFractionOrPct ? "Model Contribution (%)" : isDiff ? "Diverging Difference (°C)" : isVerif ? "Absolute Error (°C)" : "2m Temperature (°C)"}
+        {/* 6. Floating Dynamic Color Legend (NO GRADIENTS: Stepped Discrete Swatches) */}
+        <div className="map-floating-legend">
+          <div className="legend-title">
+            {isFractionOrPct
+              ? "Model Trust (%)"
+              : isDiff
+              ? "Diverging Difference (°C)"
+              : isVerif
+              ? "Absolute Error (°C)"
+              : "2m Temperature (°C)"}
           </div>
 
-          <div
-            style={{
-              height: 10,
-              borderRadius: 2,
-              background: isFractionOrPct
-                ? "linear-gradient(to right, #fefce8, #fef08a, #fde047, #eab308, #ca8a04, #78350f)"
-                : isDiff
-                ? "linear-gradient(to right, #1d4ed8, #60a5fa, #f8fafc, #f87171, #b91c1c)"
-                : isVerif
-                ? "linear-gradient(to right, #15803d, #84cc16, #eab308, #f97316, #dc2626)"
-                : "linear-gradient(to right, #1e3a8a, #0284c7, #059669, #facc15, #f97316, #ef4444, #7f1d1d)",
-              marginBottom: 4,
-            }}
-          />
+          <div className="legend-stepped-swatches">
+            {getLegendSwatches().map((color, idx) => (
+              <div key={idx} className="legend-step-color" style={{ backgroundColor: color }} />
+            ))}
+          </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: 10 }}>
+          <div className="legend-labels-row">
             <span>{isFractionOrPct ? "0%" : isDiff ? "-3.0°" : isVerif ? "0.0°" : "0°C"}</span>
             <span>{isFractionOrPct ? "50%" : isDiff ? "0.0°" : isVerif ? "1.5°" : "25°C"}</span>
             <span>{isFractionOrPct ? "100%" : isDiff ? "+3.0°" : isVerif ? "3.0°" : "45°C"}</span>
@@ -771,3 +898,5 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     </div>
   );
 };
+
+export default MapViewer;

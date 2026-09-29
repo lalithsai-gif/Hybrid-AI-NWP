@@ -1,5 +1,14 @@
 import React from "react";
 import { ModelInfo } from "../types";
+import {
+  IconCpu,
+  IconLayers,
+  IconSparkles,
+  IconShieldAlert,
+  IconTarget,
+  IconActivity,
+  IconCheck,
+} from "./Icons";
 
 interface ProcessingPipelineProps {
   modelInfo: ModelInfo | null;
@@ -9,93 +18,97 @@ export const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ modelInf
   const stages = [
     {
       step: 1,
-      name: "Input Forecasts",
+      name: "Heterogeneous Forecast Ingestion",
       badge: "Ingestion Layer",
-      color: "#2563eb",
-      desc: "Heterogeneous multi-model inputs: ECMWF HRES (0.1° physics NWP), DeepMind GraphCast (0.25° GNN), and Huawei Pangu-Weather (0.25° 3D-ViT).",
-      specs: ["HRES (NWP)", "GraphCast (AI)", "Pangu (AI)", "Lead: 24, 48, 72, 120h"],
+      color: "var(--meteo-blue)",
+      desc: "Ingests multi-model deterministic forecasts: ECMWF HRES (0.1° physics NWP), DeepMind GraphCast (0.25° GNN), and Huawei Pangu-Weather (0.25° 3D-ViT).",
+      specs: ["HRES (NWP)", "GraphCast (AI)", "Pangu (AI)", "Leads: +24, 48, 72, 120h"],
     },
     {
       step: 2,
       name: "Common Grid Projection",
       badge: "Pre-processing",
       color: "#0891b2",
-      desc: "Bilinear regridding to standard operational WeatherBench 2 India domain (6.0°N–38.5°N, 68.0°E–98.5°E) at 1.5° resolution (21×20 grid).",
-      specs: ["Domain: India Subcontinent", "Grid shape: 21 × 20", "Uniform spatial alignment"],
+      desc: "Bilinear regridding onto the operational WeatherBench 2 standard India domain (6.0°N–38.5°N, 68.0°E–98.5°E) at uniform 1.5° resolution (21 × 20 grid).",
+      specs: ["Domain: India Subcontinent", "Grid Shape: 21 × 20", "Uniform Spatial Coherence"],
     },
     {
       step: 3,
       name: "Feature Extraction & Stacking",
       badge: "Contextual Conditioning",
       color: "#059669",
-      desc: "Extracts 13 local channels (inter-model spread, range, lead-specific rolling skill, static geography: orography, slope, land-sea mask) + 3 synoptic weather regime channels (Z500, T850, MSLP).",
-      specs: ["13 Local Extra Channels", "3 Global Regime Channels", "Lead & DOY Temporal Encodings"],
+      desc: "Extracts 13 local channels (inter-model spread, range, lead-specific rolling skill, static topography: orography, slope, land-sea mask) + 3 synoptic weather regime channels (Z500, T850, MSLP).",
+      specs: ["13 Local Extra Channels", "3 Global Synoptic Regimes", "Lead & DOY Temporal Encodings"],
     },
     {
       step: 4,
-      name: "SDW-Net Architecture",
+      name: "SDW-Net Deep Learning Core",
       badge: "Deep Learning Core",
-      color: "#d97706",
-      desc: "Spatial Dynamic Weighting Network: Local convolutional blocks + Global context encoder fused via 8-head Cross-Attention mechanism to determine localized model reliability.",
-      specs: ["1,198,547 parameters", "8-head Cross-Attention", "GroupNorm + GELU activations", "Dropout = 0.12"],
+      color: "var(--brand-orange)",
+      desc: "Spatial Dynamic Weighting Network: Local convolutional blocks and global context encoder fused via an 8-head Cross-Attention mechanism to determine localized model reliability.",
+      specs: ["1,198,547 Parameters", "8-head Cross-Attention", "GroupNorm + GELU Activations", "Dropout = 0.12"],
     },
     {
       step: 5,
-      name: "Adaptive Spatial Weights",
-      badge: "Spatial Trust Map",
+      name: "Adaptive Spatial Softmax Weights",
+      badge: "Spatial Trust Maps",
       color: "#ea580c",
       desc: "Spatial Softmax head yields convex gating coefficients summing to 1.0 at every grid point: W_hres(x,y) + W_graphcast(x,y) + W_pangu(x,y) = 1. Dynamically renormalizable under degraded feeds.",
-      specs: ["Per-cell weights [0, 1]", "Sum to 1.0 everywhere", "Degraded-mode dynamic renormalization"],
+      specs: ["Per-cell weights [0, 1]", "Sum to 1.0 everywhere", "Degraded-mode Dynamic Renormalization"],
     },
     {
       step: 6,
-      name: "EVP + Kelvin Guardrails",
+      name: "EVP + Kelvin Physical Guardrails",
       badge: "Physical Regulation",
       color: "#dc2626",
       desc: "Extreme Value Preservation (EVP with α = 0.75) restores physical upper tails smoothed out by convex averaging; Kelvin guardrail strictly clips unphysical values outside [180.0 K, 340.0 K].",
-      specs: ["EVP α = 0.75", "Extreme threshold = 1.645σ", "Kelvin clip: [180K, 340K]"],
+      specs: ["EVP α = 0.75", "Extreme Threshold = 1.645σ", "Physical Clip: [180K, 340K]"],
     },
     {
       step: 7,
-      name: "Consensus Forecast Product",
-      badge: "Operational Output",
+      name: "Calibrated Consensus Forecast",
+      badge: "Operational Product",
       color: "#7c3aed",
-      desc: "Final calibrated 2m temperature consensus forecast delivering 7.78% RMSE reduction over naive arithmetic mean and improved spatial coherence across India.",
+      desc: "Final calibrated 2m surface temperature consensus forecast delivering 7.78% RMSE reduction over naive arithmetic mean and improved spatial coherence across India.",
       specs: ["RMSE = 1.434°C (vs 1.555°C Mean)", "ACC = 0.9964", "FSS = 0.741"],
     },
     {
       step: 8,
-      name: "Forecaster Decision Support",
-      badge: "Dashboard Layer",
-      color: "#b45309",
+      name: "Forecaster Decision Support Console",
+      badge: "Interactive UI",
+      color: "var(--brand-orange)",
       desc: "Forecaster-centric interactive console providing synchronized model comparison, difference maps, transparent spatial contribution inspection, and extreme hazard guidance.",
-      specs: ["Point Inspector", "Synchronized Multi-Maps", "Zero Hallucinated Metrics"],
+      specs: ["Point Telemetry Dossier", "Synchronized Multi-Maps", "Zero Hallucinated Metrics"],
     },
   ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Overview Banner */}
-      <div className="sci-card" style={{ borderLeft: "5px solid var(--primary-gold)" }}>
-        <div className="sci-card-body">
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
-            AURA-BLEND Operational Processing Pipeline
-          </h2>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-            The pipeline transforms raw heterogeneous deterministic NWP and AI forecasts into a calibrated, physically bounded consensus field with explicit spatial explainability.
+      {/* 1. Header Overview Banner */}
+      <div className="neu-panel" style={{ borderLeft: "5px solid var(--brand-orange)" }}>
+        <div className="neu-panel-body" style={{ padding: "18px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <IconCpu size={20} color="var(--brand-orange)" />
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
+              AURA-BLEND Operational Processing Pipeline
+            </h2>
+          </div>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            The pipeline transforms raw, heterogeneous deterministic NWP and AI forecasts into a calibrated, physically bounded consensus field with explicit spatial explainability.
+            Every stage operates deterministically with zero mock data.
           </p>
         </div>
       </div>
 
-      {/* Visual Pipeline Stages */}
+      {/* 2. Visual Pipeline Flowchart Stages */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {stages.map((st, idx) => (
           <React.Fragment key={st.step}>
             <div
-              className="sci-card"
+              className="neu-panel"
               style={{
                 display: "grid",
-                gridTemplateColumns: "70px 1fr 280px",
+                gridTemplateColumns: "60px 1fr 300px",
                 alignItems: "center",
                 padding: "16px 20px",
                 gap: 16,
@@ -103,45 +116,47 @@ export const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ modelInf
               }}
             >
               {/* Step circle */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ display: "flex", justifyContent: "center" }}>
                 <div
                   style={{
                     width: 38,
                     height: 38,
                     borderRadius: "50%",
                     backgroundColor: st.color,
-                    color: "white",
+                    color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontWeight: 800,
+                    fontWeight: 900,
                     fontSize: 15,
+                    boxShadow: "var(--shadow-neu-btn)",
                   }}
                 >
                   {st.step}
                 </div>
               </div>
 
-              {/* Description */}
+              {/* Title & Description */}
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{st.name}</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{st.name}</h3>
                   <span
                     style={{
                       fontSize: 10,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       padding: "2px 8px",
-                      borderRadius: 999,
-                      backgroundColor: "#f3f4f6",
+                      borderRadius: "var(--radius-full)",
+                      backgroundColor: "var(--bg-surface-inset)",
                       color: st.color,
-                      border: `1px solid ${st.color}40`,
+                      border: `1px solid ${st.color}50`,
                       textTransform: "uppercase",
+                      letterSpacing: 0.4,
                     }}
                   >
                     {st.badge}
                   </span>
                 </div>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.4 }}>{st.desc}</p>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>{st.desc}</p>
               </div>
 
               {/* Specs Pills */}
@@ -151,12 +166,13 @@ export const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ modelInf
                     key={sIdx}
                     style={{
                       fontSize: 11,
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
+                      backgroundColor: "var(--bg-surface-inset)",
+                      border: "1px solid var(--border-subtle)",
                       padding: "3px 8px",
-                      borderRadius: 4,
+                      borderRadius: "var(--radius-xs)",
                       color: "var(--text-secondary)",
                       fontFamily: "var(--font-mono)",
+                      fontWeight: 600,
                     }}
                   >
                     {spec}
@@ -167,34 +183,47 @@ export const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ modelInf
 
             {idx < stages.length - 1 && (
               <div style={{ display: "flex", justifyContent: "center", margin: "-6px 0" }}>
-                <span style={{ color: "var(--primary-gold)", fontSize: 16, fontWeight: 900 }}>↓</span>
+                <span style={{ color: "var(--brand-orange)", fontSize: 14, fontWeight: 900 }}>↓</span>
               </div>
             )}
           </React.Fragment>
         ))}
       </div>
 
-      {/* Model Specs Card */}
+      {/* 3. Model Architecture Metadata Specifications */}
       {modelInfo && (
-        <div className="sci-card">
-          <div className="sci-card-header">
-            <div className="sci-card-title">
-              <span>Architecture Metadata (aura_blend_sdw_net.pt)</span>
+        <div className="neu-panel" style={{ borderTop: "3px solid var(--brand-orange)" }}>
+          <div className="neu-panel-header">
+            <div className="neu-panel-title">
+              <IconCpu size={15} color="var(--brand-orange)" />
+              <span>Deep Learning Architecture Specifications (aura_blend_sdw_net.pt)</span>
             </div>
           </div>
-          <div className="sci-card-body">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-              <div className="key-value-row">
-                <span className="key">Trainable Parameters</span>
-                <span className="value">{modelInfo.architecture.parameters.toLocaleString()}</span>
+          <div className="neu-panel-body">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+              <div className="spec-kv-row">
+                <span className="spec-kv-key">Trainable Parameters</span>
+                <span className="spec-kv-val">{modelInfo.architecture.parameters.toLocaleString()}</span>
               </div>
-              <div className="key-value-row">
-                <span className="key">Lead Hours</span>
-                <span className="value">{modelInfo.lead_hours.join(", ")} h</span>
+              <div className="spec-kv-row">
+                <span className="spec-kv-key">Forecast Leads</span>
+                <span className="spec-kv-val">{modelInfo.lead_hours.join(", ")} h</span>
               </div>
-              <div className="key-value-row">
-                <span className="key">Validation Tuning</span>
-                <span className="value">EVP α = {modelInfo.evp_alpha}</span>
+              <div className="spec-kv-row">
+                <span className="spec-kv-key">Validation EVP Tuning</span>
+                <span className="spec-kv-val">α = {modelInfo.evp_alpha}</span>
+              </div>
+              <div className="spec-kv-row">
+                <span className="spec-kv-key">India Domain Grid</span>
+                <span className="spec-kv-val">{modelInfo.resolution} ({modelInfo.grid.height}×{modelInfo.grid.width})</span>
+              </div>
+              <div className="spec-kv-row">
+                <span className="spec-kv-key">Local Feature Channels</span>
+                <span className="spec-kv-val">{modelInfo.architecture.local_extra_channels} Channels</span>
+              </div>
+              <div className="spec-kv-row">
+                <span className="spec-kv-key">Global Synoptic Regimes</span>
+                <span className="spec-kv-val">{modelInfo.architecture.global_channels} Fields</span>
               </div>
             </div>
           </div>
@@ -203,3 +232,5 @@ export const ProcessingPipeline: React.FC<ProcessingPipelineProps> = ({ modelInf
     </div>
   );
 };
+
+export default ProcessingPipeline;
